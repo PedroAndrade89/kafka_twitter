@@ -1,40 +1,41 @@
+import json, time, avro
 from kafka import KafkaProducer
 from twython import Twython
-import json
 
 
-def injest_data(dictionay):
-    producer = KafkaProducer(bootstrap_servers='pandrade-prem-2.openstacklocal.com:6667', acks='all', batch_size=1024,value_serializer=lambda m: json.dumps(m).encode('ascii'))
+def injest_data(list):
 
-    for value in dictionay:
-        producer.send('kafka-dev-101', value)
 
-    producer.close()
+    #serialize dict to string via json and encode to bytes via utf-8
+    p = KafkaProducer(bootstrap_servers='pandrade-prem-2.openstacklocal.com:6667', acks='all',value_serializer=lambda m: json.dumps(m).encode('utf-8'), batch_size=1024)
+
+    for item in list:
+        p.send('tweets', value=item)
+
+    p.flush(100)
+    p.close()
 
 
 def main():
 
     # Load credentials from json file
-    with open("twitter_credentials.json", "r") as file:
+    with open("twitter_credentials1.json", "r") as file:
         creds = json.load(file)
 
     # Instantiate
     python_tweets = Twython(creds['CONSUMER_KEY'], creds['CONSUMER_SECRET'])
 
-    # query
-    query = {'q': 'venezuela',
-             'result_type': 'mixed',
-             'count': 10
-      #       'lang': 'en'
-             }
+    # search query
+    query = {'q': 'cloudera', 'result_type': 'mixed', 'count': 10}
 
+    #result is a python dict of tweets
     result = python_tweets.search(**query)['statuses']
 
     injest_data(result)
 
 
 if __name__ == '__main__':
-   main()
+    main()
 
 
 
